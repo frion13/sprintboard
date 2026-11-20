@@ -1,31 +1,214 @@
 openapi: 3.0.3
 info:
   title: SprintBoard API
-  version: 0.1.0
-  description: Дополните спецификацию по docs/requirements.md. Начните до реализации API.
+  version: 1.0.0
+  description: JSON API for collaborative conference project tracking.
 servers:
   - url: http://127.0.0.1:8000
+x-response-sets:
+  RegisterResponses: &RegisterResponses {'201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}, '400': {$ref: '#/components/responses/Error400'}, '403': {$ref: '#/components/responses/Error403'}, '409': {$ref: '#/components/responses/Error409'}}
+  LoginResponses: &LoginResponses {'200': {description: Signed in, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}}
+  MutationResponses204: &MutationResponses204 {'204': {description: No content}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}, '409': {$ref: '#/components/responses/Error409'}}
+  ProjectListResponses: &ProjectListResponses {'200': {description: Projects, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectPage'}}}}, '401': {$ref: '#/components/responses/Error401'}}
+  ProjectMutationResponses: &ProjectMutationResponses {'201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Project'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}}
+  ProjectDetailResponses: &ProjectDetailResponses {'200': {description: Project, content: {application/json: {schema: {$ref: '#/components/schemas/Project'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}}
+  MemberListResponses: &MemberListResponses {'200': {description: Members, content: {application/json: {schema: {$ref: '#/components/schemas/MemberPage'}}}}, '401': {$ref: '#/components/responses/Error401'}, '404': {$ref: '#/components/responses/Error404'}}
+  MemberMutationResponses: &MemberMutationResponses {'201': {description: Added, content: {application/json: {schema: {$ref: '#/components/schemas/Member'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}, '409': {$ref: '#/components/responses/Error409'}}
+  TaskListResponses: &TaskListResponses {'200': {description: Tasks, content: {application/json: {schema: {$ref: '#/components/schemas/TaskPage'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '404': {$ref: '#/components/responses/Error404'}}
+  TaskMutationResponses: &TaskMutationResponses {'201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Task'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}, '409': {$ref: '#/components/responses/Error409'}}
+  TaskDetailResponses: &TaskDetailResponses {'200': {description: Task, content: {application/json: {schema: {$ref: '#/components/schemas/Task'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}, '409': {$ref: '#/components/responses/Error409'}}
+  SummaryResponses: &SummaryResponses {'200': {description: Summary, content: {application/json: {schema: {$ref: '#/components/schemas/Summary'}}}}, '401': {$ref: '#/components/responses/Error401'}, '404': {$ref: '#/components/responses/Error404'}}
+  CommentListResponses: &CommentListResponses {'200': {description: Comments, content: {application/json: {schema: {$ref: '#/components/schemas/CommentPage'}}}}, '401': {$ref: '#/components/responses/Error401'}, '404': {$ref: '#/components/responses/Error404'}}
+  CommentMutationResponses: &CommentMutationResponses {'201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Comment'}}}}, '400': {$ref: '#/components/responses/Error400'}, '401': {$ref: '#/components/responses/Error401'}, '403': {$ref: '#/components/responses/Error403'}, '404': {$ref: '#/components/responses/Error404'}, '409': {$ref: '#/components/responses/Error409'}}
+  HistoryListResponses: &HistoryListResponses {'200': {description: History, content: {application/json: {schema: {$ref: '#/components/schemas/HistoryPage'}}}}, '401': {$ref: '#/components/responses/Error401'}, '404': {$ref: '#/components/responses/Error404'}}
 paths:
   /api/health/:
     get:
       operationId: health
       security: []
-      responses:
-        '200':
-          description: Сервер работает
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [status]
-                additionalProperties: false
-                properties:
-                  status:
-                    type: string
-                    enum: [ok]
+      responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Health'}}}}}
+  /api/auth/csrf/:
+    get:
+      operationId: csrfToken
+      security: []
+      responses: {'200': {description: Token, content: {application/json: {schema: {$ref: '#/components/schemas/Csrf'}}}}}
+  /api/auth/register/:
+    post:
+      operationId: register
+      security: []
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AuthInput'}}}}
+      responses: *RegisterResponses
+  /api/auth/login/:
+    post:
+      operationId: login
+      security: []
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AuthInput'}}}}
+      responses: *LoginResponses
+  /api/auth/logout/:
+    post:
+      operationId: logout
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      responses: *MutationResponses204
+  /api/auth/me/:
+    get:
+      operationId: me
+      security: [sessionAuth: []]
+      responses: {'200': {description: Current user, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}, '401': {$ref: '#/components/responses/Error401'}}
+  /api/projects/:
+    get:
+      operationId: listProjects
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: *ProjectListResponses
+    post:
+      operationId: createProject
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectInput'}}}}
+      responses: *ProjectMutationResponses
+  /api/projects/{project_id}/:
+    parameters: [{$ref: '#/components/parameters/ProjectId'}]
+    get:
+      operationId: getProject
+      security: [sessionAuth: []]
+      responses: *ProjectDetailResponses
+    patch:
+      operationId: updateProject
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectPatch'}}}}
+      responses: *ProjectDetailResponses
+  /api/projects/{project_id}/members/:
+    parameters: [{$ref: '#/components/parameters/ProjectId'}]
+    get:
+      operationId: listMembers
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: *MemberListResponses
+    post:
+      operationId: addMember
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MemberInput'}}}}
+      responses: *MemberMutationResponses
+  /api/projects/{project_id}/members/{user_id}/:
+    parameters: [{$ref: '#/components/parameters/ProjectId'}, {$ref: '#/components/parameters/UserId'}]
+    delete:
+      operationId: removeMember
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      responses: *MutationResponses204
+  /api/projects/{project_id}/tasks/:
+    parameters: [{$ref: '#/components/parameters/ProjectId'}]
+    get:
+      operationId: listTasks
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}, {$ref: '#/components/parameters/StatusQuery'}, {$ref: '#/components/parameters/PriorityQuery'}, {$ref: '#/components/parameters/AssigneeQuery'}, {$ref: '#/components/parameters/SearchQuery'}, {$ref: '#/components/parameters/OverdueQuery'}]
+      responses: *TaskListResponses
+    post:
+      operationId: createTask
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TaskInput'}}}}
+      responses: *TaskMutationResponses
+  /api/projects/{project_id}/summary/:
+    parameters: [{$ref: '#/components/parameters/ProjectId'}]
+    get:
+      operationId: projectSummary
+      security: [sessionAuth: []]
+      responses: *SummaryResponses
+  /api/tasks/{task_id}/:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      operationId: getTask
+      security: [sessionAuth: []]
+      responses: *TaskDetailResponses
+    patch:
+      operationId: updateTask
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TaskPatch'}}}}
+      responses: *TaskDetailResponses
+    delete:
+      operationId: deleteTask
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      responses: *MutationResponses204
+  /api/tasks/{task_id}/transition/:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    post:
+      operationId: transitionTask
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TransitionInput'}}}}
+      responses: *TaskDetailResponses
+  /api/tasks/{task_id}/comments/:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      operationId: listComments
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: *CommentListResponses
+    post:
+      operationId: addComment
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/CsrfHeader'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CommentInput'}}}}
+      responses: *CommentMutationResponses
+  /api/tasks/{task_id}/history/:
+    parameters: [{$ref: '#/components/parameters/TaskId'}]
+    get:
+      operationId: listHistory
+      security: [sessionAuth: []]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: *HistoryListResponses
 components:
   securitySchemes:
-    sessionAuth:
-      type: apiKey
-      in: cookie
-      name: sessionid
+    sessionAuth: {type: apiKey, in: cookie, name: sessionid}
+  parameters:
+    CsrfHeader: {name: X-CSRFToken, in: header, required: true, schema: {type: string}}
+    ProjectId: {name: project_id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    TaskId: {name: task_id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    UserId: {name: user_id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    Page: {name: page, in: query, required: false, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: page_size, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    StatusQuery: {name: status, in: query, schema: {type: string, enum: [todo, in_progress, review, done]}}
+    PriorityQuery: {name: priority, in: query, schema: {type: string, enum: [low, medium, high]}}
+    AssigneeQuery: {name: assignee_id, in: query, schema: {type: integer, minimum: 1}}
+    SearchQuery: {name: q, in: query, schema: {type: string, minLength: 1, maxLength: 200}}
+    OverdueQuery: {name: overdue, in: query, schema: {type: string, enum: [true, false]}}
+  schemas:
+    Error: {type: object, required: [error], additionalProperties: false, properties: {error: {type: string}}}
+    Health: {type: object, required: [status], additionalProperties: false, properties: {status: {type: string, enum: [ok]}}}
+    Csrf: {type: object, required: [csrfToken], additionalProperties: false, properties: {csrfToken: {type: string}}}
+    User: {type: object, required: [id, username], additionalProperties: false, properties: {id: {type: integer}, username: {type: string}}}
+    AuthInput: {type: object, required: [username, password], additionalProperties: false, properties: {username: {type: string, minLength: 3, maxLength: 30}, password: {type: string, minLength: 8, maxLength: 128}}}
+    Project: {type: object, required: [id, name, description, owner_id, archived, created_at], additionalProperties: false, properties: {id: {type: integer}, name: {type: string}, description: {type: string}, owner_id: {type: integer}, archived: {type: boolean}, created_at: {type: string, format: date-time}}}
+    ProjectInput: {type: object, required: [name], additionalProperties: false, properties: {name: {type: string, minLength: 1, maxLength: 100}, description: {type: string, maxLength: 2000, default: ''}}}
+    ProjectPatch: {type: object, minProperties: 1, additionalProperties: false, properties: {name: {type: string}, description: {type: string}, archived: {type: boolean}}}
+    Member: {type: object, required: [id, username, role], additionalProperties: false, properties: {id: {type: integer}, username: {type: string}, role: {type: string, enum: [owner, member]}}}
+    MemberInput: {type: object, required: [username], additionalProperties: false, properties: {username: {type: string}}}
+    Task: {type: object, required: [id, project_id, title, description, reporter_id, assignee_id, priority, status, due_date, created_at, updated_at], additionalProperties: false, properties: {id: {type: integer}, project_id: {type: integer}, title: {type: string}, description: {type: string}, reporter_id: {type: integer}, assignee_id: {type: integer, nullable: true}, priority: {type: string, enum: [low, medium, high]}, status: {type: string, enum: [todo, in_progress, review, done]}, due_date: {type: string, format: date, nullable: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}}
+    TaskInput: {type: object, required: [title], additionalProperties: false, properties: {title: {type: string}, description: {type: string}, priority: {type: string, enum: [low, medium, high]}, assignee_id: {type: integer, nullable: true}, due_date: {type: string, format: date, nullable: true}}}
+    TaskPatch: {type: object, minProperties: 1, additionalProperties: false, properties: {title: {type: string}, description: {type: string}, priority: {type: string, enum: [low, medium, high]}, assignee_id: {type: integer, nullable: true}, due_date: {type: string, format: date, nullable: true}}}
+    TransitionInput: {type: object, required: [status], additionalProperties: false, properties: {status: {type: string, enum: [todo, in_progress, review, done]}}}
+    Comment: {type: object, required: [id, task_id, author_id, text, created_at], additionalProperties: false, properties: {id: {type: integer}, task_id: {type: integer}, author_id: {type: integer}, text: {type: string}, created_at: {type: string, format: date-time}}}
+    CommentInput: {type: object, required: [text], additionalProperties: false, properties: {text: {type: string, minLength: 1, maxLength: 2000}}}
+    History: {type: object, required: [id, task_id, actor_id, kind, data, created_at], additionalProperties: false, properties: {id: {type: integer}, task_id: {type: integer}, actor_id: {type: integer}, kind: {type: string}, data: {type: object}, created_at: {type: string, format: date-time}}}
+    Summary: {type: object, required: [total, by_status, overdue], additionalProperties: false, properties: {total: {type: integer}, by_status: {type: object, required: [todo, in_progress, review, done], properties: {todo: {type: integer}, in_progress: {type: integer}, review: {type: integer}, done: {type: integer}}}, overdue: {type: integer}}}
+    ProjectPage: {type: object, required: [count, results], properties: {count: {type: integer}, results: {type: array, items: {$ref: '#/components/schemas/Project'}}}}
+    MemberPage: {type: object, required: [count, results], properties: {count: {type: integer}, results: {type: array, items: {$ref: '#/components/schemas/Member'}}}}
+    TaskPage: {type: object, required: [count, results], properties: {count: {type: integer}, results: {type: array, items: {$ref: '#/components/schemas/Task'}}}}
+    CommentPage: {type: object, required: [count, results], properties: {count: {type: integer}, results: {type: array, items: {$ref: '#/components/schemas/Comment'}}}}
+    HistoryPage: {type: object, required: [count, results], properties: {count: {type: integer}, results: {type: array, items: {$ref: '#/components/schemas/History'}}}}
+  responses:
+    Error400: {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error401: {description: Authentication required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error403: {description: Forbidden or CSRF failure, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error404: {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error409: {description: Conflict, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error415: {description: Unsupported media type, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Error405: {description: Method not allowed, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
